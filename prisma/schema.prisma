@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model category_library {
+  id                       Int                        @id @unique(map: "id") @default(autoincrement())
+  language_id              Int
+  feed_id                  Int
+  natural_category_id      String                     @db.VarChar(255)
+  name_origin_language     String?                    @db.VarChar(255)
+  name                     String?                    @db.VarChar(255)
+  created_at               DateTime                   @default(now()) @db.DateTime(0)
+  last_updated_at          DateTime                   @default(now()) @db.DateTime(0)
+  // language                 language                   @relation(fields: [language_id], references: [id], onDelete: NoAction, map: "category_library_ibfk_1")
+  // feed                     feed                       @relation(fields: [feed_id], references: [id], onDelete: NoAction, map: "category_library_ibfk_2")
+  // category_mall_menuitemid category_mall_menuitemid[]
+  // category_parameter       category_parameter[]
+  // categorytext             categorytext[]
+  // h_i_target_product       h_i_target_product[]
+  shop_category            shop_category[]
+
+  @@unique([language_id, feed_id, natural_category_id], map: "one_entry")
+  @@index([feed_id], map: "feed_id")
+  @@index([language_id], map: "language_id")
+  @@index([name], map: "name")
+  @@index([natural_category_id], map: "natural_category_id")
+  @@index([natural_category_id, name, feed_id], map: "search_index")
+}
+
+model item_information {
+  id                       Int                        @id @unique(map: "id") @default(autoincrement())
+  item_information_name    String?                    @db.VarChar(255)
+  // h_i_target_information   h_i_target_information[]
+  shop_product_information shop_product_information[]
+}
+
+model shop_brand {
+  id                 BigInt       @id @unique(map: "id") @default(autoincrement()) @db.UnsignedBigInt
+  shop_product_id    Int
+  natural_brand_name String?      @db.Text
+  target_brand_id    String?      @db.Text
+  target_brand_name  String?      @db.Text
+  brand_status_id    Int          @default(1)
+  shop_product       shop_product @relation(fields: [shop_product_id], references: [id], onDelete: Cascade, map: "shop_brand_ibfk_1")
+  // item_status        item_status  @relation(fields: [brand_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_brand_ibfk_2")
+
+  @@index([brand_status_id], map: "item_status_id")
+  @@index([shop_product_id], map: "shop_feed_item_id")
+}
+
+model shop_category {
+  id                 Int               @id @unique(map: "id") @default(autoincrement())
+  shop_project_id    Int
+  shop_product_id    Int
+  categorytext       String?           @db.VarChar(1000)
+  target_category_id Int?
+  category_status_id Int               @default(1)
+  created_at         DateTime          @default(now()) @db.DateTime(0)
+  last_updated_at    DateTime          @default(now()) @db.DateTime(0)
+  shop_project       shop_project      @relation(fields: [shop_project_id], references: [id], onDelete: Cascade, map: "shop_category_ibfk_1")
+  shop_product       shop_product      @relation(fields: [shop_product_id], references: [id], onDelete: Cascade, map: "shop_category_ibfk_2")
+  category_library   category_library? @relation(fields: [target_category_id], references: [id], onUpdate: SetNull, map: "shop_category_ibfk_3")
+  // item_status        item_status       @relation(fields: [category_status_id], references: [id], onDelete: SetDefault, map: "shop_category_ibfk_4")
+  shop_param         shop_param[]
+
+  @@unique([shop_project_id, shop_product_id], map: "one_entry")
+  @@index([category_status_id], map: "item_status_id")
+  @@index([shop_project_id, target_category_id], map: "shop_feed_item_idx_shop_id_target_id")
+  @@index([shop_product_id], map: "shop_product_id")
+  @@index([target_category_id], map: "target_category_id")
+}
+
+
+model shop_param {
+  id                  Int            @id @default(autoincrement())
+  shop_category_id    Int?
+  origin_param_id     String?        @db.VarChar(255)
+  target_param_id     String?        @db.VarChar(255)
+  parameter_status_id Int            @default(1)
+  is_mandatory        Boolean?
+  created_at          DateTime       @default(now()) @db.DateTime(0)
+  last_updated_at     DateTime       @default(now()) @db.DateTime(0)
+  // item_status         item_status    @relation(fields: [parameter_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_param_ibfk_3")
+  shop_category       shop_category? @relation(fields: [shop_category_id], references: [id], onDelete: Cascade, map: "shop_param_ibfk_5")
+  shop_value          shop_value[]
+
+  @@unique([shop_category_id, origin_param_id], map: "one_entry")
+  @@unique([shop_category_id, target_param_id], map: "one_entry_target")
+  @@index([target_param_id], map: "idx_target")
+  @@index([parameter_status_id], map: "item_status_id")
+  @@index([origin_param_id], map: "origin_param_id")
+}
+
+model shop_product {
+  id                       Int                        @id @unique(map: "id") @default(autoincrement())
+  shop_id                  Int?
+  natural_product_id       String                     @db.VarChar(255)
+  product_name             String?                    @db.Text
+  is_deleted               Boolean                    @default(false)
+  created_at               DateTime                   @default(now()) @db.DateTime(0)
+  last_updated_at          DateTime                   @default(now()) @db.DateTime(0)
+  last_imported_at         DateTime?                  @db.DateTime(0)
+  // shop                     shop?                      @relation(fields: [shop_id], references: [id], onDelete: Cascade, map: "shop_product_ibfk_1")
+  shop_brand               shop_brand[]
+  shop_category            shop_category[]
+  shop_product_information shop_product_information[]
+
+  @@unique([shop_id, natural_product_id], map: "one_entry")
+  @@index([natural_product_id], map: "product_id")
+}
+
+model shop_product_information {
+  id                            BigInt           @id @unique(map: "id") @default(autoincrement()) @db.UnsignedBigInt
+  shop_project_id               Int?
+  shop_product_id               Int
+  product_information_type_id   Int
+  product_information_value     String?          @db.LongText
+  product_information_status_id Int              @default(2)
+  created_at                    DateTime         @default(now()) @db.DateTime(0)
+  shop_product                  shop_product     @relation(fields: [shop_product_id], references: [id], onDelete: Cascade, map: "shop_product_information_ibfk_1")
+  item_information              item_information @relation(fields: [product_information_type_id], references: [id], onDelete: Cascade, map: "shop_product_information_ibfk_2")
+  // item_status                   item_status      @relation(fields: [product_information_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_product_information_ibfk_3")
+  shop_project                  shop_project?    @relation(fields: [shop_project_id], references: [id], onDelete: Cascade, map: "shop_product_information_ibfk_4")
+
+  @@unique([shop_project_id, shop_product_id, product_information_type_id, created_at], map: "one_entry")
+  @@index([product_information_type_id], map: "item_information_type_id")
+  @@index([product_information_status_id], map: "item_status_id")
+  @@index([shop_product_id], map: "shop_feed_item_id")
+}
+
+model shop_project {
+  id                       Int                        @id @unique(map: "id") @default(autoincrement())
+  shop_id                  Int
+  project_code             String?                    @db.VarChar(255)
+  target_language_id       Int
+  target_feed_id           Int
+  target_feed_url          String?                    @db.Text
+  export_feed_url          String?                    @db.Text
+  created_at               DateTime                   @default(now()) @db.DateTime(0)
+  last_updated_at          DateTime                   @default(now()) @db.DateTime(0)
+  // feed                     feed                       @relation(fields: [target_feed_id], references: [id], onDelete: NoAction, map: "shop_project_ibfk_3")
+  // language                 language                   @relation(fields: [target_language_id], references: [id], onDelete: NoAction, map: "shop_project_ibfk_5")
+  // shop                     shop                       @relation(fields: [shop_id], references: [id], onDelete: Cascade, map: "shop_project_ibfk_6")
+  shop_category            shop_category[]
+  // shop_log                 shop_log[]
+  shop_product_information shop_product_information[]
+  // shop_request             shop_request[]
+
+  @@index([shop_id], map: "shop_id")
+  @@index([target_feed_id], map: "target_feed_id")
+  @@index([target_language_id], map: "target_language_id")
+}
+
+
+model shop_value {
+  id                    Int         @id @default(autoincrement())
+  shop_param_id         Int
+  origin_param_value_id String?     @db.VarChar(255)
+  origin_measure        String?     @db.VarChar(255)
+  target_value_id       String?     @db.VarChar(255)
+  target_value          String?     @db.VarChar(255)
+  target_measure        String?     @db.VarChar(255)
+  value_status_id       Int         @default(1)
+  created_at            DateTime    @default(now()) @db.DateTime(0)
+  last_updated_at       DateTime    @default(now()) @db.DateTime(0)
+  shop_param            shop_param  @relation(fields: [shop_param_id], references: [id], onDelete: Cascade, map: "shop_value_ibfk_2")
+  // item_status           item_status @relation(fields: [value_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_value_ibfk_3")
+
+  @@index([value_status_id], map: "item_status_id")
+  @@index([shop_param_id], map: "origin_param_id")
+  @@index([target_value], map: "target_param_value_id")
+  @@index([shop_param_id, value_status_id], map: "unique_record")
+}
